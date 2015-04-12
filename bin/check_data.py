@@ -6,45 +6,62 @@ Description:
     ...
 
 Usage:
-    check_data.py -f CSV
+    check_data.py -i CSV [-F NAME ...]
 
 Options:
-    -f CSV
-    -o OUTPUT
+    -i CSV, --input CSV
+    -F NAME
 
 """
 
 import os
 import sys
 import re
-import codecs
-import csvkit
 import chardet
+import pandas
 
 from csv import QUOTE_MINIMAL
 from StringIO import StringIO
 from docopt import docopt
 
-#from pyspark import SparkConf, SparkContext
-#from pyspark.sql import SQLContext, Row
-
-FLOAT_RE = re.compile(r"[0-9]+\.[0-9]+")
-
 
 class CharDetReader:
-    def __init__(self, f, **kwargs):
+    """A custom encoding-agnostic CSV reader.
+
+    """
+
+    def __init__(self, f, skip_first=True,
+            field_names=None, **kwargs):
         """Constructor.
 
         """
 
         self.f = f
+        self.field_names = field_names
+        self.skip_first = skip_first
         self.kwargs = kwargs
 
         return
 
     def __iter__(self):
+        """Return a generator over each parsed csv line. The character encodings
+        and data types in each line are inferred.
+
+        """
+
+        skip = self.skip_first
+        sep = self.kwargs.get("delimiter", ",")
+        columns = self.field_names
+
         for encoding, line in recoder(self.f):
-            yield encoding, csvkit.reader(StringIO(line), **self.kwargs).next()
+            if skip:
+                skip = False
+                continue
+
+            # Let pandas infer the data types of each field.
+            row = pandas.read_csv(StringIO(line), sep=sep,
+                    names=columns, header=None)
+            yield row.to_records(index=None)[0]
 
         return
 
@@ -62,47 +79,12 @@ def recoder(f):
     return
 
 
-def parse_csv_line(line, sep):
-    """
-    """
-    f = StringIO(line)
-    vals = csvkit.reader(f, delimiter=";", quoting=0).next()
-
-    age_str = vals[2]
-
-    # Parse the age if it was specified, ages are assumed to be integers.
-    try:
-        age = int(age_str[2])
-    except ValueError:
-        age = None
-
-    return
-
-
-#def load_data(sc, fn, output_fn):
-#    """
-#    """
-#    rdd = sc.textFile(fn)
-#
-#    # Skip the header line (the first line).
-#    header = rdd.first()
-#    csv_lines = rdd.filter(lambda ln : ln != header)
-#    csv_rows = csv_lines.map(lambda ln : parse_line(ln, sep=";"))
-#    csv_rows.saveAsTextFile(output_fn)
-#
-#    return
-
-
 if __name__ == '__main__':
     opts = docopt(__doc__)
-    
-#    # Initialise the spark context.
-#    conf = SparkConf().setMaster("local").setAppName("etl")
-#    sc = SparkContext(conf=conf)
-#
 
-    with open(opts["-f"], "rb") as f:
-        reader = CharDetReader(f, delimiter=";", quoting=QUOTE_MINIMAL)
-        for encoding, row in reader:
+    with open(opts["--input"], "rb") as f:
+        reader = CharDetReader(f, skip_first=True, field_names=opts["-F"],
+                    delimiter=";", quoting=QUOTE_MINIMAL)
+
+        for row in reader:
             print row
-
