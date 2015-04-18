@@ -28,7 +28,11 @@ ENCODING = "windows-1252"
 DELIMITER = ";"
 
 ERROR_VALUE = None
-ISBN_PAT = re.compile(r"[0-9]+")
+WS_PAT = re.compile(r"\s+")
+
+# Field patterns.
+ISBN_PAT = re.compile(r"^((\d{12}[\dA-Za-z])|(\d{9}[\dA-Za-z]))$")
+USER_ID_PAT = re.compile(r"^(\d+)$")
 
 
 def translit(s):
@@ -36,15 +40,43 @@ def translit(s):
 
 
 def convert_isbn(s):
+    """
+
+    ISBN values are 13 digits if assigned after Jan. 1, 2007, and 10 digits otherwise.
+    - last digit is a "check digit", which can be a letter or number.
+
+    """
+
+    # Remove leading/trailing/inner whitespace.
+    # Make the raw ISBN upper case.
+    s = WS_PAT.sub("", s).upper()
+
     if ISBN_PAT.match(s):
         return unicode(s)
+
     return ERROR_VALUE
+
+
+def check():
+    tab = etl.fromcsv("data/csv/BX-Users.csv", delimiter=DELIMITER,
+            quoting=QUOTE_MINIMAL, encoding=ENCODING)
+
+    # Check user-id validity.
+    tab = tab.select(lambda r : not USER_ID_PAT.match(r["User-ID"]))
+
+    print tab.look(1)
+
+    return
 
 
 def main():
     conn = sqlite3.connect("bx.db")
 
-    tab = etl.fromcsv("BX-Users.csv", delimiter=DELIMITER,
+    #
+    # Transform BX-Users.csv
+    #
+
+    tab = etl.fromcsv("data/csv/BX-Users.csv", delimiter=DELIMITER,
             quoting=QUOTE_MINIMAL, encoding=ENCODING)
 
     tab = tab.rename({
@@ -53,17 +85,14 @@ def main():
         "Age" : "age"
         })
 
-#   transforms = OrderedDict([
-#       ("age", lambda r : (ERROR_VALUE if r["age"] == "NULL" else float(r["age"])))
-#   ])
-#   tab = tab.fieldmap(transforms, failonerror=True)
-
     tab = ( tab.convert("user_id", translit, errorvalue=ERROR_VALUE)
                .convert("location", translit, errorvalue=ERROR_VALUE)
                .convert("age", lambda x : float(x), errorvalue=ERROR_VALUE) )
 
-    # Transform the books.
-    tab = etl.fromcsv("BX-Books.csv", delimiter=DELIMITER,
+    #
+    # Transform BX-Books.csv
+    #
+    tab = etl.fromcsv("data/csv/BX-Books.csv", delimiter=DELIMITER,
                 quoting=QUOTE_MINIMAL, encoding=ENCODING)
     tab = tab.rename({
                     "ISBN" : "isbn",
@@ -91,7 +120,13 @@ def main():
 
     sys.exit()
 
-    # write the `users` table to a sqlite db.
+    #
+    # Transform BX-Book-Ratings.csv
+    #
+
+    #
+    # Load each table into an sqlite db.
+    #
     tab.todb(conn, "users", create=True)
 
     conn.close()
@@ -99,4 +134,4 @@ def main():
     return
 
 if __name__ == '__main__':
-    main()
+    check()
