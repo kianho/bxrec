@@ -23,75 +23,13 @@ import os
 import sys
 import re
 import traceback
-import chardet
 import pandas
 
-from csv import QUOTE_MINIMAL
 from StringIO import StringIO
 from collections import OrderedDict
 from docopt import docopt
 from schema import Schema, Or, And, Use
-from ftfy import fix_text, guess_bytes
 
-
-class CharDetReader:
-    """A custom encoding-agnostic CSV reader.
-
-    """
-
-    def __init__(self, f, cols, skip_first=True, **kwargs):
-        """Constructor.
-
-        """
-
-        self.f = f
-        self.cols = cols
-        self.skip_first = skip_first
-        self.kwargs = kwargs
-
-        return
-
-    def __iter__(self):
-        """Return a generator over each parsed csv line. The character encodings
-        and data types in each line are inferred.
-
-        """
-
-        skip_first = self.skip_first
-        sep = self.kwargs.get("delimiter", ",")
-        names, dtype = self.cols.keys(), self.cols
-
-        for line in self.f:
-            if skip_first:
-                skip_first = False
-                continue
-
-            try:
-                row = pandas.read_csv(StringIO(line), sep=sep,
-                        names=names, dtype=dtype, header=None)
-                yield row.to_records(index=None)[0], None
-            except Exception, e:
-                # Generate error message then continue checking other lines.
-                # TODO: add pretty indents to make error messages more legible.
-                exception_str = traceback.format_exc(sys.exc_info())
-                yield None, exception_str
-
-
-        return
-
-
-def recoder(f):
-    """Auto-detect the character set for each line in `f` and re-encode it as
-    a utf-8 string.
-
-    """
-
-    for line in f:
-        line = guess_bytes(line)
-        encoding = chardet.detect(line)["encoding"]
-        yield encoding, line.decode(encoding).encode("utf-8")
-
-    return
 
 
 def get_col_dtypes(s):
@@ -102,11 +40,10 @@ def get_col_dtypes(s):
     return OrderedDict(((p[0], getattr(__builtin__, p[1])) for p in pairs))
 
 
-
 if __name__ == '__main__':
     opts = docopt(__doc__)
 
-    # command-line option schema
+    # Command-line options schema.
     opts = Schema(
             {
                 "--input" : os.path.exists,
@@ -115,17 +52,29 @@ if __name__ == '__main__':
                 "--skip-first" : Use(bool)
             }).validate(opts)
 
+    skip_first = opts["--skip-first"]
+    bad_lines = 0
     with open(opts["--input"], "rb") as f:
-        reader = CharDetReader(f, skip_first=opts["--skip-first"],
-                    cols=opts["--cols"],
-                    delimiter=opts["--delim"])
+        for row_i, line in enumerate(f):
+            if skip_first:
+                skip_first = False
+                continue
 
-        for row_i, (row, exception_str) in enumerate(reader):
-            # Display the condition of each row.
-            line_num = row_i + 1
-            if row:
-                log_msg = "ROW %d -> OK" % line_num + os.linesep
-            else:
-                log_msg = "ROW %d -> BAD" % line_num + os.linesep
-                log_msg += exception_str
+            row_num = row_i + 1
+    
+            # Let pandas handle the character encoding/decoding for each line
+            # separately.
+            #
+            # Display a stack trace for mis-interpreted lines to stderr.
+            try:
+                row = pandas.read_csv(StringIO(line), sep=opts["--delim"],
+                        names=opts["--cols"].keys(), dtype=opts["--cols"],
+                        header=None)
+                log_msg = "OK" + os.linesep
+            except Exception, e:
+                exc_str = traceback.format_exc(sys.exc_info())
+                log_msg = "BAD" + os.linesep + exec_str 
+                bad_lines += 1
+
+            log_msg = ("ROW %d -> " % row_num) + log_msg
             sys.stderr.write(log_msg)
