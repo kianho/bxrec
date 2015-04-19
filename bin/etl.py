@@ -8,19 +8,21 @@ Description:
 Usage:
     etl.py
 
-
 """
 
 import os
 import sys
 import re
 import sqlite3
-import ftfy
+import textwrap
+import tabulate
 import petl as etl
 
 from csv import QUOTE_MINIMAL
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from unidecode import unidecode # transliterate unicode to ascii
+
+PWD = os.path.dirname(os.path.abspath(__file__))
 
 # detect the char. encoding of a file:
 #   $ uchardet <FILE>
@@ -30,9 +32,10 @@ DELIMITER = ";"
 ERROR_VALUE = None
 WS_PAT = re.compile(r"\s+")
 
-# Field patterns.
+# Expected field patterns.
 ISBN_PAT = re.compile(r"^((\d{12}[\dA-Za-z])|(\d{9}[\dA-Za-z]))$")
 USER_ID_PAT = re.compile(r"^(\d+)$")
+AGE_PAT = re.compile(r"^(\d+)$")
 
 
 def translit(s):
@@ -57,14 +60,36 @@ def convert_isbn(s):
     return ERROR_VALUE
 
 
-def check():
-    tab = etl.fromcsv("data/csv/BX-Users.csv", delimiter=DELIMITER,
-            quoting=QUOTE_MINIMAL, encoding=ENCODING)
+def check_bx_users(fn):
+    """
+    """
 
-    # Check user-id validity.
-    tab = tab.select(lambda r : not USER_ID_PAT.match(r["User-ID"]))
+    tab = ( etl.fromcsv(fn, delimiter=DELIMITER,
+                quoting=QUOTE_MINIMAL, encoding=ENCODING) )
 
-    print tab.look(1)
+    # Compute a summary of "bad" rows.
+    bad_rows = defaultdict(int)
+
+    for r in tab.records():
+        # Check user-id format.
+        if r["User-ID"] == "NULL":
+            bad_rows["(User-ID, NULLs)"] += 1
+        if not USER_ID_PAT.match(r["User-ID"]):
+            sys.stderr.write("WARNING: invalid `User-ID` format @ row %d"
+                    % r["row"] + os.linesep)
+            bad_rows["(User-ID, error)"] += 1
+
+        # Check age format.
+        if r["Age"] == "NULL":
+            bad_rows["(Age, NULL)"] += 1
+        if not AGE_PAT.match(r["Age"]):
+            sys.stderr.write("WARNING: invalid `Age` format @ row %d"
+                    % r["row"] + os.linesep)
+            bad_rows["(Age, error)"] += 1
+
+    # Print a summary of the bad rows.
+    print("SUMMARY for %s" % fn)
+    print(tabulate.tabulate(bad_rows.items()))
 
     return
 
@@ -134,4 +159,4 @@ def main():
     return
 
 if __name__ == '__main__':
-    check()
+    check_bx_users(os.path.abspath("./"))
