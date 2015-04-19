@@ -271,9 +271,7 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
 
     errargs = { "errorvalue" : ERROR_VALUE }
 
-    #
     # Transform BX-Users.csv
-    #
     tab = etl.fromcsv(bx_users_fn, delimiter=DELIMITER, escapechar=ESCAPECHAR,
             quoting=QUOTE_ALL, encoding=ENCODING)
 
@@ -288,9 +286,7 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
                .convert("location", translit, **errargs)
                .convert("age", (lambda s : int(s)), **errargs) )
 
-    #
     # Transform BX-Books.csv
-    #
     tab = etl.fromcsv(bx_books_fn, delimiter=DELIMITER, escapechar=ESCAPECHAR,
                 quoting=QUOTE_ALL, encoding=ENCODING)
 
@@ -315,9 +311,7 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
                .convert("img_url_m", (lambda s : s.strip()), **errargs)
                .convert("img_url_l", (lambda s : s.strip()), **errargs) )
 
-    #
     # Transform BX-Book-Ratings.csv
-    #
     tab = etl.fromcsv(bx_book_ratings_fn, delimiter=DELIMITER,
                 escapechar=ESCAPECHAR, quoting=QUOTE_ALL, encoding=ENCODING)
 
@@ -332,13 +326,14 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
                .convert("isbn", clean_isbn, **errargs)
                .convert("rating", clean_rating, **errargs) )
 
-    #
-    # Load each table into an sqlite db.
-    #
     with sqlite3.connect(db_fn) as conn:
+        # Load each table into an sqlite db.
         users_tab.todb(conn, "users", create=True)
         books_tab.todb(conn, "books", create=True, drop=True)
         ratings_tab.todb(conn, "ratings", create=True)
+
+        # TODO: Remove ratings with missing books or users.
+
         conn.commit()
 
     return
