@@ -6,7 +6,11 @@ Description:
     ...
 
 Usage:
-    etl.py
+    etl.py check <bx-users-csv>
+
+Options:
+    check
+
 
 """
 
@@ -20,6 +24,7 @@ import petl as etl
 
 from csv import QUOTE_MINIMAL
 from collections import OrderedDict, defaultdict
+from docopt import docopt
 from unidecode import unidecode # transliterate unicode to ascii
 
 PWD = os.path.dirname(os.path.abspath(__file__))
@@ -68,28 +73,36 @@ def check_bx_users(fn):
                 quoting=QUOTE_MINIMAL, encoding=ENCODING) )
 
     # Compute a summary of "bad" rows.
-    bad_rows = defaultdict(int)
+    summary = defaultdict(int)
 
-    for r in tab.records():
+    for row_num, r in enumerate(tab.records(), 1):
         # Check user-id format.
         if r["User-ID"] == "NULL":
-            bad_rows["(User-ID, NULLs)"] += 1
-        if not USER_ID_PAT.match(r["User-ID"]):
+            summary["User-ID, NULL"] += 1
+        elif not USER_ID_PAT.match(r["User-ID"]):
             sys.stderr.write("WARNING: invalid `User-ID` format @ row %d"
-                    % r["row"] + os.linesep)
-            bad_rows["(User-ID, error)"] += 1
+                    % row_num + os.linesep)
+            summary["User-ID, invalid"] += 1
+        else:
+            pass
+
+        # Check location format:
+        if r["Location"] == "NULL":
+            summary["Location, NULL"] += 1
 
         # Check age format.
         if r["Age"] == "NULL":
-            bad_rows["(Age, NULL)"] += 1
-        if not AGE_PAT.match(r["Age"]):
+            summary["(Age, NULL)"] += 1
+        elif not AGE_PAT.match(r["Age"]):
             sys.stderr.write("WARNING: invalid `Age` format @ row %d"
-                    % r["row"] + os.linesep)
-            bad_rows["(Age, error)"] += 1
+                    % row_num + os.linesep)
+            summary["(Age, invalid)"] += 1
+        else:
+            pass
 
     # Print a summary of the bad rows.
     print("SUMMARY for %s" % fn)
-    print(tabulate.tabulate(bad_rows.items()))
+    print(tabulate.tabulate(summary.items()))
 
     return
 
@@ -159,4 +172,7 @@ def main():
     return
 
 if __name__ == '__main__':
-    check_bx_users(os.path.abspath("./"))
+    opts = docopt(__doc__)
+
+    if opts["check"]:
+        check_bx_users(opts["<bx-users-csv>"])
