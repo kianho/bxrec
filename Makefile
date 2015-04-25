@@ -10,12 +10,12 @@
 #
 #   Make the primary BX dataset:
 #
-#   $ make data/bx.db
+#   $ make bxrec/data/bx.db
 # 
 export SHELL
 SHELL:=/bin/bash
 
-BASE_DIR=$(shell pwd)
+BASE_DIR=$(shell pwd)/bxrec
 BIN=$(BASE_DIR)/bin
 DATA=$(BASE_DIR)/data
 CSV=$(DATA)/csv
