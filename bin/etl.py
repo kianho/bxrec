@@ -19,8 +19,9 @@ Options:
 import os
 import sys
 import re
-import sqlite3
 import json
+import HTMLParser
+import sqlite3
 import petl as etl
 
 from pprint import pprint
@@ -47,6 +48,11 @@ AGE_PAT = re.compile(r"^(\d+)$")
 YEAR_PAT = re.compile(r"^(\d{4})$") # TODO: check for improbably old/new books.
 URL_PAT = re.compile(r"^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$")
 WS_PAT = re.compile(r"\s+")
+
+# Use the html parser from the `HTMLParser` library to unescape HTML
+# entities.
+HTML_PARSER = HTMLParser()
+
 
 
 def validate_age(field, value, error):
@@ -100,7 +106,7 @@ def check_bx_users(fn):
     for row_num, r in enumerate(tab.dicts(), 1):
         is_valid = v.validate(r)
         if not is_valid:
-            print("row %d -> %r, %r" % (row_num, v.errors, r))
+            print "row %d -> %r, %r" % (row_num, v.errors, r)
 
     return
 
@@ -159,7 +165,7 @@ def check_bx_books(fn):
     for row_num, r in enumerate(tab.dicts(), 1):
         is_valid = v.validate(r)
         if not is_valid:
-            print("row %d -> %r, %r" % (row_num, v.errors, r))
+            print "row %d -> %r, %r" % (row_num, v.errors, r)
 
     return
 
@@ -191,7 +197,7 @@ def check_bx_book_ratings(fn):
     for row_num, r in enumerate(tab.dicts(), 1):
         is_valid = v.validate(r)
         if not is_valid:
-            print("row %d -> %r, %r" % (row_num, v.errors, r))
+            print "row %d -> %r, %r" % (row_num, v.errors, r)
 
     return
 
@@ -229,6 +235,25 @@ def clean_publisher(s):
     if publisher == "NULL" or not publisher:
         return NULL_VALUE
     return publisher
+
+
+def clean_text_col(s):
+    """Generic string cleaning function for plain-text columns (e.g. those which
+    aren't intended to represent integers or floating-point numbers.
+
+    The string cleaning operations include:
+
+    1. stripping flanking whitespace
+    2. unescaping HTML entities
+
+    """
+
+    s = HTML_PARSER.unescape(s.strip())
+
+    if s == "NULL" or not s:
+        return NULL_VALUE
+
+    return s
 
 
 def clean_year(s):
@@ -332,7 +357,9 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
         books_tab.todb(conn, "books", create=True, drop=True)
         ratings_tab.todb(conn, "ratings", create=True)
 
-        # TODO: Remove ratings with missing books or users.
+        conn.execute(r"""
+
+        """)
 
         conn.commit()
 
@@ -346,11 +373,11 @@ if __name__ == '__main__':
         do_etl(opts["<bx-users-csv>"], opts["<bx-books-csv>"],
                 opts["<bx-book-ratings-csv>"], opts["--db"])
     elif opts["check"]:
-        print(opts["<bx-books-csv>"])
+        print opts["<bx-books-csv>"]
         check_bx_books(opts["<bx-books-csv>"])
 
-        print(opts["<bx-users-csv>"])
+        print opts["<bx-users-csv>"]
         check_bx_users(opts["<bx-users-csv>"])
 
-        print(opts["<bx-book-ratings-csv>"])
+        print opts["<bx-book-ratings-csv>"]
         check_bx_book_ratings(opts["<bx-book-ratings-csv>"])
