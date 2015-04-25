@@ -24,12 +24,10 @@ import sqlite3
 import petl as etl
 
 from HTMLParser import HTMLParser
-from pprint import pprint
 from csv import QUOTE_ALL
-from collections import OrderedDict, defaultdict
 from docopt import docopt
 from cerberus import Validator
-from unidecode import unidecode # transliterate unicode to ascii
+from unicodedata import normalize
 
 PWD = os.path.dirname(os.path.abspath(__file__))
 
@@ -202,27 +200,40 @@ def check_bx_book_ratings(fn):
     return
 
 
-def translit(s):
-    """Transliterate a non-ascii string to ascii.
-
-    """
-    return unicode(unidecode(unicode(s.encode("utf-8"), "utf-8")))
-
-
 def clean_isbn(s):
     return WS_PAT.sub("", s)
 
 
 def clean_text(s):
-    """Generic string cleaning function for plain-text columns (e.g. those which
-    aren't intended to represent integers or floating-point numbers.
+    """Generic string cleaning function for standard string columns (e.g. those
+    which aren't intended to solely represent integers or floating-point
+    numbers.
 
     The string cleaning operations include:
 
-    1. stripping flanking whitespace
-    2. unescaping HTML entities
+    1. stripping flanking whitespace.
+    2. unescaping HTML entities.
+    3. normalise unicode using "NFKD" form.
+
+    Assume that any tranliteration to ASCII occurs at the time of querying. 
+
+    Note: This function enforces utf-8 encoding.
 
     """
+
+    s = normalize("NFKD", s)
+
+    # ALTERNATIVE:
+    # Transliterate to ASCII (128 code-points)
+    #
+    #   from unidecode import unidecode
+    #   .
+    #   .
+    #   .
+    #   try:
+    #       s.decode("utf-8")
+    #   except UnicodeEncodeError:
+    #       s = unicode(unidecode(s))
 
     s = HTML_PARSER.unescape(s.strip())
 
@@ -233,6 +244,9 @@ def clean_text(s):
 
 
 def clean_year(s):
+    """
+    """
+
     year = s.strip()
 
     try:
@@ -246,6 +260,9 @@ def clean_year(s):
 
 
 def clean_rating(s):
+    """
+    """
+
     rating = s.strip()
 
     try:
@@ -257,16 +274,17 @@ def clean_rating(s):
 
 
 def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
-    """
+    """Run the ETL procedures over all the BX csv files, populating a single
+    sqlite .db file.
 
     Arguments:
-        bx_users_fn --
-        bx_books_fn --
-        bx_book_ratings_fn --
-        db_fn --
+        bx_users_fn -- path to the BX-Users.csv file.
+        bx_books_fn -- path to the BX-Books.csv file.
+        bx_book_ratings_fn -- path to the BX-Book_Ratings.csv file.
+        db_fn -- path to the output sqlite .db file.
 
     Returns:
-        ...
+        None
 
     """
 
@@ -283,9 +301,11 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
         })
 
     users_tab = (
-            tab.convert("user_id", (lambda s : s.strip()), **errargs)
-               .convert("location", translit, **errargs)
-               .convert("age", (lambda s : int(s)), **errargs) )
+            tab.convert("user_id",
+                    (lambda s : s.strip()), **errargs)
+               .convert("location", clean_text, **errargs)
+               .convert("age",
+                    (lambda s : int(s)), **errargs) )
 
     # Transform BX-Books.csv
     tab = etl.fromcsv(bx_books_fn, delimiter=DELIMITER, escapechar=ESCAPECHAR,
@@ -332,11 +352,6 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
         users_tab.todb(conn, "users", create=True)
         books_tab.todb(conn, "books", create=True, drop=True)
         ratings_tab.todb(conn, "ratings", create=True)
-
-        conn.execute(r"""
-
-        """)
-
         conn.commit()
 
     return
