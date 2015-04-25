@@ -1,0 +1,12 @@
+--- /tmp/BX-Users.csv	2004-10-11 16:22:10.000000000 +1000
++++ ./csv/BX-Users.csv	2015-04-12 00:08:08.963074876 +1000
+@@ -275079,8 +275079,7 @@
+ "275078";"el paso, texas, usa";"62"
+ "275079";"istanbul, eurasia, turkey";"26"
+ "275080";"madrid, n/a, spain";"29"
+-"275081";"cernusco s
+-, milan, italy";NULL
++"275081";"cernusco s, milan, italy";NULL
+ "275082";"hacienda heights, california, usa";"16"
+ "275083";"cedar rapids, iowa, usa";"22"
+ "275084";"london, n/a, united kingdom";"30"
