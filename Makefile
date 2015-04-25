@@ -25,28 +25,34 @@ CSV_ZIP=$(DATA)/BX-CSV-Dump.zip
 CSV_FILES=$(addprefix $(DATA)/BX, -Book-Ratings.csv -Books.csv -Users.csv)
 
 ETL_PY=$(BIN)/etl.py
-ETL_DB=$(DATA)/bx.db
+BX_DB=$(DATA)/bx.db
+
+
+# Inspect the bx.db sqlite tables.
 
 
 # ETL the csv files into a single sqlite db.
-$(ETL_DB): $(DATA)/.ds
+$(BX_DB): $(DATA)/.ds
 	time $(ETL_PY) etl \
 	   	$(CSV)/BX-Users.csv $(CSV)/BX-Books.csv $(CSV)/BX-Book-Ratings.csv --db $@
 
-# Inspect the csv files.
+# Inspect the csv files, this doesn't clean the csv files, it merely writes the
+# suspect rows to stdout for the developer's reference. "Suspect" rows are
+# assumed to be those that don't conform to a pre-determined format.
 $(LOG)/BX.log: $(LOG)/.ds
 	( time $(ETL_PY) check \
 	   	$(CSV)/BX-Users.csv $(CSV)/BX-Books.csv $(CSV)/BX-Book-Ratings.csv ) > $@
-
-$(LOG)/.ds: 
-	mkdir -p $(@D) && touch $@
-
-dataset: $(DATA)/csv/.ds
 
 # Generate/unzip the raw csv files.
 $(DATA)/csv/.ds: $(CSV_ZIP) $(DATA)/.ds
 	mkdir -p $(@D) && touch $@
 	unzip -d $(@D) $<
 
+#
+# Directory stamp targets.
+#
+$(LOG)/.ds: 
+	mkdir -p $(@D) && touch $@
+
 $(DATA)/.ds:
-	touch $@
+	mkdir -p $(@D) && touch $@
