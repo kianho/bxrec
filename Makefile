@@ -27,6 +27,8 @@ CSV_FILES=$(addprefix $(DATA)/BX, -Book-Ratings.csv -Books.csv -Users.csv)
 ETL_PY=$(BIN)/etl.py
 BX_DB=$(DATA)/bx.db
 
+run-tests:
+	nosetests tests/run_tests.py -v --cover-package=bxrec --with-coverage
 
 # Inspect the bx.db sqlite tables.
 
