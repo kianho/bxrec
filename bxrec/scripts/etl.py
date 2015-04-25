@@ -20,10 +20,10 @@ import os
 import sys
 import re
 import json
-import HTMLParser
 import sqlite3
 import petl as etl
 
+from HTMLParser import HTMLParser
 from pprint import pprint
 from csv import QUOTE_ALL
 from collections import OrderedDict, defaultdict
@@ -213,31 +213,7 @@ def clean_isbn(s):
     return WS_PAT.sub("", s)
 
 
-def clean_title(s):
-    title = s.strip()
-
-    if title == "NULL" or not title:
-        return NULL_VALUE
-    return title
-
-
-def clean_author(s):
-    author = s.strip()
-
-    if author == "NULL" or not author:
-        return NULL_VALUE
-    return author
-
-
-def clean_publisher(s):
-    publisher = s.strip()
-
-    if publisher == "NULL" or not publisher:
-        return NULL_VALUE
-    return publisher
-
-
-def clean_text_col(s):
+def clean_text(s):
     """Generic string cleaning function for plain-text columns (e.g. those which
     aren't intended to represent integers or floating-point numbers.
 
@@ -328,10 +304,10 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
 
     books_tab = (
             tab.convert("isbn", clean_isbn, **errargs)
-               .convert("title", clean_title, **errargs)
-               .convert("author", clean_author, **errargs)
+               .convert("title", clean_text, **errargs)
+               .convert("author", clean_text, **errargs)
                .convert("year", clean_year, **errargs)
-               .convert("publisher", clean_publisher, **errargs)
+               .convert("publisher", clean_text, **errargs)
                .convert("img_url_s", (lambda s : s.strip()), **errargs)
                .convert("img_url_m", (lambda s : s.strip()), **errargs)
                .convert("img_url_l", (lambda s : s.strip()), **errargs) )
