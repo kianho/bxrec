@@ -1,22 +1,20 @@
-#
 # Author:
 #   Kian Ho <hui.kian.ho@gmail.com>
 #
 # Description:
-# 	This Makefile controls the data wrangling tasks associated with the BX
-# 	dataset.
+# 	This Makefile controls the wrangling of the BX dataset into a sqlite
+# 	database.
 #
 # Usage:
 #
 #   Make the primary BX dataset:
-#
 #   $ make bxrec/data/bx.db
 # 
 export SHELL
 SHELL:=/bin/bash
 
 BASE_DIR=$(shell pwd)/bxrec
-SCRIPTS=$(BASE_DIR)/scripts
+BIN=$(BASE_DIR)/bin
 DATA=$(BASE_DIR)/data
 CSV=$(DATA)/csv
 LOG=$(BASE_DIR)/log
@@ -24,7 +22,7 @@ LOG=$(BASE_DIR)/log
 CSV_ZIP=$(DATA)/BX-CSV-Dump.zip
 CSV_FILES=$(addprefix $(DATA)/BX, -Book-Ratings.csv -Books.csv -Users.csv)
 
-ETL_PY=$(SCRIPTS)/etl.py
+ETL_PY=$(BIN)/etl.py
 BX_DB=$(DATA)/bx.db
 
 run-tests:
