@@ -28,9 +28,6 @@ BX_DB=$(DATA)/bx.db
 run-tests:
 	nosetests tests/run_tests.py -v --cover-package=bxrec --with-coverage
 
-# Inspect the bx.db sqlite tables.
-
-
 # ETL the csv files into a single sqlite db.
 bx_db: $(BX_DB)
 $(BX_DB): $(DATA)/.ds

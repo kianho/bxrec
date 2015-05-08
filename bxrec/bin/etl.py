@@ -222,7 +222,7 @@ def clean_text(s):
 
     """
 
-    s = normalize("NFKD", s)
+    s = normalize("NFKD", unicode(s))
 
     # ALTERNATIVE:
     # Transliterate to ASCII (128 code-points)
@@ -305,8 +305,7 @@ def do_etl(bx_users_fn, bx_books_fn, bx_book_ratings_fn, db_fn):
             tab.convert("user_id",
                     (lambda s : s.strip()), **errargs)
                .convert("location", clean_text, **errargs)
-               .convert("age",
-                    (lambda s : int(s)), **errargs) )
+               .convert("age", (lambda s : int(s)), **errargs) )
 
     # Transform BX-Books.csv
     tab = etl.fromcsv(bx_books_fn, delimiter=DELIMITER, escapechar=ESCAPECHAR,
