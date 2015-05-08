@@ -3,7 +3,8 @@
 """
 
 Description:
-    ...
+    This script performs an ETL of the BX dataset into a sqlite via a series of
+    intermediate data validation and cleaning operations.
 
 Usage:
     etl.py etl <bx-users-csv> <bx-books-csv> <bx-book-ratings-csv> --db DB
