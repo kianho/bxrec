@@ -107,12 +107,12 @@ def predict_rating(R, R_avg, S, u, m):
         Predicted movie rating.
 
     """
-   
+
     # Users (ie. neighbours) that have rated this movie.
     neighbours = R[m].dropna().index
 
     numer, denom = 0, 0
-    for v in neighbours: 
+    for v in neighbours:
         numer += S.ix[u, v] * (R.ix[v, m] - R_avg[v])
         denom += abs(S.ix[u, v])
 
@@ -133,4 +133,3 @@ if __name__ == '__main__':
 
     # Predict the rating of "C" for the movie "Equilibrium".
     print predict_rating(R, R_avg, S, "C", "Equilibrium")
-
